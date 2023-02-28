@@ -158,21 +158,29 @@ void combine()
 {
     raven::set::cRunWatch aWatcher("combine sections");
 
+    // Finds pairs of sections that can be combined
     for (auto &a1 : vSection)
     {
-        raven::set::cRunWatch aWatcher("pairwise combine section");
-
+        // check for already combined
         if (a1.myfCombined)
             continue;
-        bool found = false;
+        
+        // search for possible section to combine with a1
         for (auto &a2 : vSection)
         {
+            // is it uncombined
             if (a2.myfCombined)
                 continue;
+
+            // is it itself
             if (a1.myName == a2.myName)
                 continue;
+
+            // is the the combined area under the limit
             if (a1.myArea + a2.myArea > maxArea)
                 continue;
+
+            // is it physically connected
             if (!a1.isConnected(a2))
                 continue;
 
@@ -181,30 +189,35 @@ void combine()
             comb.add(a1);
             comb.add(a2);
             theCombined.push_back(comb);
-            found = true;
             break;
         }
-        if (found)
-            continue;
     }
 
     // Try adding uncombined sections to the combinations already found
-    
+
     bool fimproved = true;
     while (fimproved)
     {
+        // loop over the combinations until no more new combinations found
         fimproved = false;
         for (auto &C : theCombined)
         {
-
+            // loop over uncombined seaction for possible addition to combimation
             for (auto &U : vSection)
             {
+                // it it uncombined
                 if (U.myfCombined)
                     continue;
+
+                // is the the combined area under the limit
                 if (C.myArea + U.myArea > maxArea)
                     continue;
+
+                // is it physically connected
                 if (!C.IsConnected(U))
                     continue;
+
+                // OK, add to combination
                 C.add(U);
                 fimproved = true;
             }
