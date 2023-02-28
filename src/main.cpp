@@ -89,7 +89,7 @@ public:
 };
 
 std::vector<cSection> vSection;
-std::vector<cCombined> theCombined;
+std::vector<cCombined> theCombined, theBestCombined;
 const int maxArea = 6; // Limit on total area of combined sections
 
 void displaySections()
@@ -97,9 +97,9 @@ void displaySections()
     for (auto &sect : vSection)
         sect.display();
 }
-void displayCombinations()
+void displayCombinations(std::vector<cCombined>& vComb)
 {
-    for (auto &comb : theCombined)
+    for (auto &comb : vComb)
         comb.display();
 }
 
@@ -227,16 +227,41 @@ void combine()
             break;
     }
 }
+int Value()
+{
+    int value = 0;
+    for( auto& C : theCombined )
+        value += C.myPop;
+    return value;
+}
 main()
 {
+    // unit test
     generateRandom(10, 5);
     displaySections();
     combine();
-    displayCombinations();
+    displayCombinations(theCombined);
 
     raven::set::cRunWatch::Start();
     generateRandom(2000, 5);
     combine();
+    theBestCombined = theCombined;
+    int bestValue = Value();
+    for( int t = 0; t < 4000; t++ )
+    {
+         std::random_shuffle ( vSection.begin(), vSection.end() );
+         
+         combine();
+
+         int value = Value();
+         if( value > bestValue )
+         {
+            bestValue = value;
+            theBestCombined = theCombined;
+            std::cout << "Try " << t << " best value now " << bestValue;
+         }
+    }
+    displayCombinations( theBestCombined );
     raven::set::cRunWatch::Report();
     return 0;
 }
