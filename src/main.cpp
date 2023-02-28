@@ -88,18 +88,37 @@ public:
     }
 };
 
+class cOptimizer
+{
+    public:
+     std::vector<cCombined> theCombined;
+    std::vector<cCombined> myBestCombined;
+
+    int combinedAreaLimit() const
+    {
+        return 6;
+    }
+
+    /// @brief Search for optimum combination
+    /// @param iters number of iterations
+
+    void Optimize( int iters);
+
+    void display();
+};
+
 std::vector<cSection> vSection;
-std::vector<cCombined> theCombined, theBestCombined;
-const int maxArea = 6; // Limit on total area of combined sections
+
+cOptimizer O;
 
 void displaySections()
 {
     for (auto &sect : vSection)
         sect.display();
 }
-void displayCombinations(std::vector<cCombined>& vComb)
+void cOptimizer::display()
 {
-    for (auto &comb : vComb)
+    for (auto &comb : myBestCombined)
         comb.display();
 }
 
@@ -177,7 +196,7 @@ void combine()
                 continue;
 
             // is the the combined area under the limit
-            if (a1.myArea + a2.myArea > maxArea)
+            if (a1.myArea + a2.myArea > O.combinedAreaLimit())
                 continue;
 
             // is it physically connected
@@ -188,7 +207,7 @@ void combine()
             cCombined comb;
             comb.add(a1);
             comb.add(a2);
-            theCombined.push_back(comb);
+            O.theCombined.push_back(comb);
             break;
         }
     }
@@ -200,7 +219,7 @@ void combine()
     {
         // loop over the combinations until no more new combinations found
         fimproved = false;
-        for (auto &C : theCombined)
+        for (auto &C : O.theCombined)
         {
             // loop over uncombined seaction for possible addition to combimation
             for (auto &U : vSection)
@@ -210,7 +229,7 @@ void combine()
                     continue;
 
                 // is the the combined area under the limit
-                if (C.myArea + U.myArea > maxArea)
+                if (C.myArea + U.myArea > O.combinedAreaLimit())
                     continue;
 
                 // is it physically connected
@@ -230,38 +249,49 @@ void combine()
 int Value()
 {
     int value = 0;
-    for( auto& C : theCombined )
+    for( auto& C : O.theCombined )
         value += C.myPop;
     return value;
 }
-main()
-{
-    // unit test
-    generateRandom(10, 5);
-    displaySections();
-    combine();
-    displayCombinations(theCombined);
 
-    raven::set::cRunWatch::Start();
-    generateRandom(2000, 5);
+void cOptimizer::Optimize( int iters )
+{
     combine();
-    theBestCombined = theCombined;
+    myBestCombined = theCombined;
     int bestValue = Value();
-    for( int t = 0; t < 4000; t++ )
+    for( int t = 0; t < iters; t++ )
     {
+        raven::set::cRunWatch aWatcher("try");
+
          std::random_shuffle ( vSection.begin(), vSection.end() );
-         
+
          combine();
 
          int value = Value();
          if( value > bestValue )
          {
             bestValue = value;
-            theBestCombined = theCombined;
+            myBestCombined = theCombined;
             std::cout << "Try " << t << " best value now " << bestValue;
          }
     }
-    displayCombinations( theBestCombined );
+}
+main()
+{
+
+
+    // unit test
+    generateRandom(10, 5);
+    displaySections();
+    O.Optimize(1);
+    O.display();
+
+    // 2000 section time profile
+    raven::set::cRunWatch::Start();
+    generateRandom(2000, 5);
+    O.Optimize( 4000);
+
+    //O.display();
     raven::set::cRunWatch::Report();
     return 0;
 }
