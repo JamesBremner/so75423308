@@ -13,8 +13,10 @@ public:
     int myArea;
     int myPop;
     std::vector<int> adjacent;
+    bool myfCombined;
 
     cSection()
+        : myfCombined(false)
     {
     }
     cSection(const std::string &n,
@@ -22,10 +24,16 @@ public:
              int pop)
         : myName(n),
           myArea(area),
-          myPop(pop)
+          myPop(pop),
+          myfCombined(false)
     {
     }
-
+    bool isConnected(const cSection &other)
+    {
+        return (std::find(
+                    adjacent.begin(), adjacent.end(),
+                    atoi(other.myName.substr(1).c_str())) != adjacent.end());
+    }
     void display()
     {
         std::cout << myName
@@ -42,21 +50,59 @@ public:
     }
 };
 
-std::vector<cSection> vSection;
+class cCombined
+{
+public:
+    std::vector<cSection> vSection;
+    int myArea;
+    int myPop;
+    cCombined()
+        : myArea(0),
+          myPop(0)
+    {
+    }
+    bool IsConnected(const cSection &sect)
+    {
+        for (auto &s : vSection)
+            if (s.isConnected(sect))
+                return true;
+        return false;
+    }
+    void add(cSection &sect)
+    {
+        vSection.push_back(sect);
+        sect.myfCombined = true;
+        myArea += sect.myArea;
+        myPop += sect.myPop;
+    }
 
-void display()
+    void display()
+    {
+        for (auto &s : vSection)
+            std::cout << s.myName << " ";
+
+        std::cout << " | "
+                  << "area " << myArea
+                  << " pop " << myPop
+                  << "\n";
+    }
+};
+
+std::vector<cSection> vSection;
+std::vector<cCombined> theCombined;
+const int maxArea = 6; // Limit on total area of combined sections
+
+void displaySections()
 {
     for (auto &sect : vSection)
         sect.display();
 }
-void display(const std::vector<std::pair<cSection, cSection>> &comb)
+void displayCombinations()
 {
-    for (auto &p : comb)
-        std::cout << p.first.myName << ", " << p.second.myName << " | "
-                  << "area " << p.first.myArea + p.second.myArea
-                  << " pop " << p.first.myPop + p.second.myPop
-                  << "\n";
+    for (auto &comb : theCombined)
+        comb.display();
 }
+
 // void generate1()
 // {
 //     vSection.push_back(cSection("A", 6, 100));
@@ -78,7 +124,7 @@ void generateRandom(
     int SectionCount,
     int AvAdjacentCount)
 {
-    const int maxArea = 10;
+    const int maxArea = 2;
     const int maxPop = 100;
 
     vSection.clear();
@@ -87,8 +133,8 @@ void generateRandom(
     for (auto &s : vSection)
     {
         s.myName = "S" + std::to_string(ks);
-        s.myArea = rand() % maxArea;
-        s.myPop = rand() % maxPop;
+        s.myArea = rand() % maxArea + 1;
+        s.myPop = rand() % maxPop + 1;
 
         int adjCount = rand() % (2 * AvAdjacentCount);
         for (int ka = 0; ka < adjCount; ka++)
@@ -108,37 +154,76 @@ void generateRandom(
     }
 }
 
-std::vector<std::pair<cSection, cSection>> combine()
+void combine()
 {
-     raven::set::cRunWatch aWatcher("pairwise combine all sections");
-    const int maxArea = 6;
+    raven::set::cRunWatch aWatcher("combine sections");
 
-    std::vector<std::pair<cSection, cSection>> ret;
-
-    for (auto &a1 : vSection) {
+    for (auto &a1 : vSection)
+    {
         raven::set::cRunWatch aWatcher("pairwise combine section");
+
+        if (a1.myfCombined)
+            continue;
+        bool found = false;
         for (auto &a2 : vSection)
         {
+            if (a2.myfCombined)
+                continue;
             if (a1.myName == a2.myName)
                 continue;
             if (a1.myArea + a2.myArea > maxArea)
                 continue;
-            if (std::find(
-                    a1.adjacent.begin(), a1.adjacent.end(),
-                    atoi(a2.myName.substr(1).c_str())) == a1.adjacent.end())
+            if (!a1.isConnected(a2))
                 continue;
-            ret.push_back(std::make_pair(a1, a2));
+
+            // OK to combine
+            cCombined comb;
+            comb.add(a1);
+            comb.add(a2);
+            theCombined.push_back(comb);
+            found = true;
+            break;
         }
+        if (found)
+            continue;
     }
-    return ret;
+
+    // Try adding uncombined sections to the combinations already found
+    
+    bool fimproved = true;
+    while (fimproved)
+    {
+        fimproved = false;
+        for (auto &C : theCombined)
+        {
+
+            for (auto &U : vSection)
+            {
+                if (U.myfCombined)
+                    continue;
+                if (C.myArea + U.myArea > maxArea)
+                    continue;
+                if (!C.IsConnected(U))
+                    continue;
+                C.add(U);
+                fimproved = true;
+            }
+        }
+        // check we are still finding additional combinations
+        if (!fimproved)
+            break;
+    }
 }
 main()
 {
+    generateRandom(10, 5);
+    displaySections();
+    combine();
+    displayCombinations();
+
     raven::set::cRunWatch::Start();
     generateRandom(2000, 5);
-    //display();
-    auto comb = combine();
-    //display(comb);
+    combine();
     raven::set::cRunWatch::Report();
     return 0;
 }
