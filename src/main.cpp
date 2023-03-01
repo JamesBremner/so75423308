@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "cRunWatch.h"
 
+
 class cSection
 {
 public:
@@ -208,6 +209,11 @@ void cOptimizer::combine()
 {
     raven::set::cRunWatch aWatcher("combine sections");
 
+    // clear previous combination
+    for (auto &s : vSection)
+        s.myfCombined = false;
+    theCombined.clear();
+
     // Finds pairs of sections that can be combined
     for (auto &a1 : vSection)
     {
@@ -313,7 +319,7 @@ void cOptimizer::Optimize(int iters)
             // store improved combination and its value
             bestValue = value;
             myBestCombined = theCombined;
-            std::cout << "Try " << t << " best value now " << bestValue;
+            std::cout << "Try " << t << " best value now " << bestValue << "\n";
         }
     }
 }
