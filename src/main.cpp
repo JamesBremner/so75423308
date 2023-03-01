@@ -53,45 +53,31 @@ public:
 class cCombined
 {
 public:
-    std::vector<cSection> vSection;
-    int myArea;
-    int myPop;
-    cCombined()
-        : myArea(0),
-          myPop(0)
-    {
-    }
-    bool IsConnected(const cSection &sect)
-    {
-        for (auto &s : vSection)
-            if (s.isConnected(sect))
-                return true;
-        return false;
-    }
-    void add(cSection &sect)
-    {
-        vSection.push_back(sect);
-        sect.myfCombined = true;
-        myArea += sect.myArea;
-        myPop += sect.myPop;
-    }
+    std::vector<cSection> mySection; // sections in combination
+    int myArea;                     // total area of sections
+    int myPop;                      // total population of sections
 
-    void display()
-    {
-        for (auto &s : vSection)
-            std::cout << s.myName << " ";
+    cCombined();
 
-        std::cout << " | "
-                  << "area " << myArea
-                  << " pop " << myPop
-                  << "\n";
-    }
+    /// @brief Is there a physical connection to a section not in this combination
+    /// @param sect
+    /// @return
+
+    bool IsConnected(const cSection &sect);
+
+    /// @brief Add section to combination
+    /// @param sect
+
+    void add(cSection &sect);
+
+    void display();
 };
 
 class cOptimizer
 {
-    public:
-     std::vector<cCombined> theCombined;
+public:
+    std::vector<cSection> vSection;
+    std::vector<cCombined> theCombined;
     std::vector<cCombined> myBestCombined;
 
     int combinedAreaLimit() const
@@ -99,19 +85,64 @@ class cOptimizer
         return 6;
     }
 
+    /// @brief generate some random sections
+    /// @param SectionCount number of sections
+    /// @param AvAdjacentCount average connections to other sections
+
+    void generateRandom(
+        int SectionCount,
+        int AvAdjacentCount);
+
+        void combine();
+
     /// @brief Search for optimum combination
     /// @param iters number of iterations
 
-    void Optimize( int iters);
+    void Optimize(int iters);
 
+    /// @brief Value ( population ) of all combined sections
+    /// @return 
+    int Value();
+
+    void displaySections();
     void display();
 };
 
-std::vector<cSection> vSection;
-
 cOptimizer O;
 
-void displaySections()
+cCombined::cCombined()
+    : myArea(0),
+      myPop(0)
+{
+}
+void cCombined::add(cSection &sect)
+{
+    mySection.push_back(sect);
+    sect.myfCombined = true;
+    myArea += sect.myArea;
+    myPop += sect.myPop;
+}
+
+bool cCombined::IsConnected(const cSection &sect)
+{
+    for (auto &s : mySection)
+        if (s.isConnected(sect))
+            return true;
+    return false;
+}
+
+void cCombined::display()
+{
+    for (auto &s : mySection)
+        std::cout << s.myName << " ";
+
+    std::cout << " | "
+              << "area " << myArea
+              << " pop " << myPop
+              << "\n";
+}
+
+void cOptimizer::displaySections()
 {
     for (auto &sect : vSection)
         sect.display();
@@ -139,7 +170,7 @@ void cOptimizer::display()
 //     vSection.back().adjacent.push_back("D");
 // }
 
-void generateRandom(
+void cOptimizer::generateRandom(
     int SectionCount,
     int AvAdjacentCount)
 {
@@ -173,7 +204,7 @@ void generateRandom(
     }
 }
 
-void combine()
+void cOptimizer::combine()
 {
     raven::set::cRunWatch aWatcher("combine sections");
 
@@ -183,7 +214,7 @@ void combine()
         // check for already combined
         if (a1.myfCombined)
             continue;
-        
+
         // search for possible section to combine with a1
         for (auto &a2 : vSection)
         {
@@ -196,7 +227,7 @@ void combine()
                 continue;
 
             // is the the combined area under the limit
-            if (a1.myArea + a2.myArea > O.combinedAreaLimit())
+            if (a1.myArea + a2.myArea > combinedAreaLimit())
                 continue;
 
             // is it physically connected
@@ -207,7 +238,7 @@ void combine()
             cCombined comb;
             comb.add(a1);
             comb.add(a2);
-            O.theCombined.push_back(comb);
+            theCombined.push_back(comb);
             break;
         }
     }
@@ -222,7 +253,7 @@ void combine()
         for (auto &C : O.theCombined)
         {
             // loop over uncombined seaction for possible addition to combimation
-            for (auto &U : vSection)
+            for (auto &U : O.vSection)
             {
                 // it it uncombined
                 if (U.myfCombined)
@@ -246,52 +277,61 @@ void combine()
             break;
     }
 }
-int Value()
+int cOptimizer::Value()
 {
     int value = 0;
-    for( auto& C : O.theCombined )
+    for (auto &C : O.theCombined)
         value += C.myPop;
     return value;
 }
 
-void cOptimizer::Optimize( int iters )
+void cOptimizer::Optimize(int iters)
 {
+    // do an initial combination
     combine();
+
+    // store combination and its value
     myBestCombined = theCombined;
     int bestValue = Value();
-    for( int t = 0; t < iters; t++ )
+
+    // loop for the requested number of iterations
+    for (int t = 0; t < iters; t++)
     {
+        // start timer
         raven::set::cRunWatch aWatcher("try");
 
-         std::random_shuffle ( vSection.begin(), vSection.end() );
+        // randomize the order of sections
+        std::random_shuffle(vSection.begin(), vSection.end());
 
-         combine();
+        // do another combination
+        combine();
 
-         int value = Value();
-         if( value > bestValue )
-         {
+        // check for an improved value
+        int value = Value();
+        if (value > bestValue)
+        {
+            // store improved combination and its value
             bestValue = value;
             myBestCombined = theCombined;
             std::cout << "Try " << t << " best value now " << bestValue;
-         }
+        }
     }
 }
 main()
 {
 
-
     // unit test
-    generateRandom(10, 5);
-    displaySections();
+    O.generateRandom(10, 5);
+    O.displaySections();
     O.Optimize(1);
     O.display();
 
     // 2000 section time profile
     raven::set::cRunWatch::Start();
-    generateRandom(2000, 5);
-    O.Optimize( 4000);
+    O.generateRandom(2000, 5);
+    O.Optimize(4000);
 
-    //O.display();
+    // O.display();
     raven::set::cRunWatch::Report();
     return 0;
 }
